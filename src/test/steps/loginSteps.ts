@@ -1,44 +1,56 @@
 import { Given, When, Then, setDefaultTimeout } from "@cucumber/cucumber";
-
 import { expect } from "@playwright/test";
 import { fixture } from "../../hooks/pageFixture";
 
-setDefaultTimeout(60 * 1000 * 2)
+setDefaultTimeout(2 * 60 * 1000); // 2 хвилини
 
+// Navigate to the app
 Given('User navigates to the application', async function () {
-    await fixture.page.goto(process.env.BASEURL);
-    fixture.logger.info("Navigated to the application")
-})
+    await fixture.page.goto(process.env.BASEURL || "http://localhost:3000");
+    fixture.logger.info("Navigated to the application");
+});
 
+// Click login link (точний локатор через роль + текст)
 Given('User click on the login link', async function () {
-    await fixture.page.locator("//span[text()='Login']").click();
+    const loginLink = fixture.page.getByRole('link', { name: 'Login' });
+    await loginLink.click();
+    fixture.logger.info("Clicked on login link");
 });
 
+// Enter username
 Given('User enter the username as {string}', async function (username) {
-    await fixture.page.locator("input[formcontrolname='username']").type(username);
+    const usernameInput = fixture.page.locator("input[formcontrolname='username']");
+    await usernameInput.fill(username); // fill краще, ніж type
+    fixture.logger.info(`Entered username: ${username}`);
 });
 
+// Enter password
 Given('User enter the password as {string}', async function (password) {
-    await fixture.page.locator("input[formcontrolname='password']").type(password);
-})
-
-When('User click on the login button', async function () {
-    await fixture.page.locator("button[color='primary']").click();
-    await fixture.page.waitForLoadState();
-    fixture.logger.info("Waiting for 2 seconds")
-    await fixture.page.waitForTimeout(2000);
+    const passwordInput = fixture.page.locator("input[formcontrolname='password']");
+    await passwordInput.fill(password);
+    fixture.logger.info("Entered password");
 });
 
+// Click login button (точний локатор через роль + текст)
+When('User click on the login button', async function () {
+    const loginButton = fixture.page.getByRole('button', { name: 'Login' });
+    await loginButton.click();
+    await fixture.page.waitForLoadState('networkidle'); // чекаємо повного завантаження
+    fixture.logger.info("Clicked on login button and waited for load");
+});
 
+// Login success check
 Then('Login should be success', async function () {
-    const user = fixture.page.locator("//button[contains(@class,'mat-focus-indicator mat-menu-trigger')]//span[1]");
-    await expect(user).toBeVisible();
-    const userName = await user.textContent();
+    const userButton = fixture.page.getByRole('button', { name: /.*User.*/ }); // або частковий текст
+    await expect(userButton).toBeVisible();
+    const userName = await userButton.textContent();
     console.log("Username: " + userName);
     fixture.logger.info("Username: " + userName);
-})
+});
 
+// Login fail check
 When('Login should fail', async function () {
-    const failureMesssage = fixture.page.locator("mat-error[role='alert']");
-    await expect(failureMesssage).toBeVisible();
+    const failureMessage = fixture.page.locator("mat-error[role='alert']");
+    await expect(failureMessage).toBeVisible();
+    fixture.logger.info("Login failed message is visible");
 });
